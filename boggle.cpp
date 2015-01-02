@@ -1,4 +1,4 @@
-#include <curses.h>
+#include <ncursesw/curses.h>"
 #include <menu.h>
 #include <stdio.h>
 #include <ctype.h>
@@ -26,43 +26,64 @@
 
 using namespace std;
 
+/*
 static const short _dicesWalls[16][6] = {
 	{'R', 'W', 'I', 'I', 'B', 'N'},
 	{'K','N', 'O', 'E', 'D', 'R'},
 	{'Y','Z', 'O', 'E', 'A', 'Z'},
-	{'O','T', 'W', 'C', 'S', '≈Å'},
-	{'D', 'A', 'Y', '√ì', 'A', 'E'},
-	{'B', 'Z', 'P', 'E', '≈ö', 'E'},
+	{'O','T', 'W', 'C', 'S', 'ø'},
+	{'D', 'A', 'Y', 'ø', 'A', 'E'},
+	{'B', 'Z', 'P', 'E', 'ø', 'E'},
 	{'A', 'K', 'I', 'Y', 'A', 'M'},
-	{'M', '≈π', 'G', '≈ª', 'C', 'T'},
-	{'I', 'R', 'P', 'O', 'ƒò', 'K'},
+	{'M', '”', 'G', 'ø', 'C', 'T'},
+	{'I', 'R', 'P', 'O', 'ø', 'K'},
 	{'E', 'U', 'Y', 'A', 'I', 'O'},
 	{'N', 'I', 'A', 'P', 'N', 'C'},
-	{'J', 'ƒÜ', 'F', 'L', 'H', 'S'},
+	{'J', 'ø', 'F', 'L', 'H', 'S'},
 	{'G', 'R', 'S', 'O', 'A', 'L'},
-	{'U', 'M', 'J', 'T', 'ƒÑ', 'Z'},
-	{'≈É', 'W', 'E', 'I', 'L', 'S'},
-	{'N', '≈É', 'D', 'Z', 'W', 'H'}};
+	{'U', 'M', 'J', 'T', 'ø', 'Z'},
+	{'ø', 'W', 'E', 'I', 'L', 'S'},
+	{'N', 'ø', 'D', 'Z', 'W', 'H'}};
+*/
 
-//	int width(6);
+static const wchar_t* _dicesWalls[16] = {
+	L"RWIIBN",
+	L"KNOEDR",
+	L"YZOEAZ",
+	L"OTWCS\u0104",
+	L"DAY\u0118AE",
+	L"BZPE\u00D3E",
+	L"AKIYAM",
+	L"M\u015AG\u0141CT",
+	L"IRPO\u0106K",
+	L"EUYAIO",
+	L"NIAPNC",
+	L"J\u0143FLHC",
+	L"GRSOAL",
+	L"UMJT\u0179Z",
+	L"\u017BWEILS",
+	L"N\u0143DZWH"
+};
+
+///	int width(6);
 char *choices[] = {
 	  "Choice 1",
 	   "Choice 2",
 	   "Choice 3",
 	 };
 
-struct Cube {
-	const char* _walls;
-	Cube(const char* letters) : _walls(letters)
+struct Dice {
+	const wchar_t* _walls;
+	Dice(const wchar_t* letters) : _walls(letters)
 	{}
 };
 
-typedef vector<Cube*> _cubes;
+typedef vector<Dice*> _dices;
 vector<char> _lettersOnBoard;
-char** _board;
+wchar_t _board[4][4];
 vector<string> _dictionary;
 vector<string> _inputedwords;
-WINDOW *create_newwin(int height_, int width_, int starty_, int startx_, _cubes* list_);
+WINDOW *create_newwin(int height_, int width_, int starty_, int startx_, _dices* list_);
 char** _itemlist; 
 int _scrolllistsize;
 int _score;
@@ -175,24 +196,20 @@ void validate_letter_case(char* c_) { //converting polish diacritics to lowercas
 
 }/*}}}*/
 
-_cubes init_cubes() {/*{{{*/ //creates cubes (dices) to rand from
+_dices initDices() {
 
- 	_cubes cubes;
+ 	_dices dices;
 
 	for (int i(0); i < 16; ++i) {
-		char* c = new char[7];
-		for (int j(0); j < 6; ++j) {
-			c[j] = _dicesWalls[i][j];
-		}
 
-		c[6] = 0;
-		Cube* cube = new Cube(c);
-		cubes.push_back(cube);
+		const wchar_t* str = _dicesWalls[i];
+
+		Dice* dice = new Dice(str);
+		dices.push_back(dice);
 	}
 
- 	return cubes;
+ 	return dices;
 }
-/*}}}*/
 
 void calculate_score(const char* input_, int* score_) {/*{{{*/
 	int l(strlen(input_));
@@ -271,31 +288,52 @@ void prepare_gui(int startx_, int starty_, int liststartx_, int liststarty_ ) {
  	//mvprintw(startx_ + 12, starty_ + 36, "%s", "Score:");
 }
 
-void init_board() {/*{{{*/
-	
-	_board = new char*[16];
 
-	for (int i(0); i < 16; ++i) {
-		_board[i] = new char[1];
-		for (int j(0); j < 7; ++j) {
-			_board[i][j] = 'x';
-		}
-	}
-/*	
-	int c(0);
+void fillBoard(WINDOW* w, _dices list) {
+
+	srand(time(NULL));
+	
+
 	for (int p(0); p < 4; ++p) {
 		for (int q(0); q < 4; ++q) {
-			char tmp = _lettersOnBoard.at(c++);
-			validate_letter_case(&tmp); //convert diacritics to lower case 
-			_board[p][q] = tmp;
-		}
-	}*/
-}
-/*}}}*/
+			int rand_wall = (rand() % 5);
+			int rand_cube(0);
+			int counter(list.size());
 
+			if (counter > 0)
+				rand_cube = (rand() % (counter));
+			else
+				rand_cube = 1;
+
+	//		char c[2] = "1";
+			wchar_t c = list.at(rand_cube)->_walls[rand_wall];
+	//		_lettersOnBoard.push_back(*c);
+			_board[p][q] = c;
+			//mvwaddstr(local_win, 1.7, 2, c);
+			if (counter > 0)
+				list.erase(list.begin() + (rand_cube));
+		}
+
+	}
+
+	//wattron(w, A_BOLD);
+
+	int id(0);
+	for (int i(2),  p(0); i < 12; i += 3) {
+		for (int j(3), q(0); j < 22; j += 6) {
+			wchar_t tmp = _board[p][q++]; //_lettersOnBoard.at(id++);
+			const wchar_t* wstr = L"\u0119";
+			mvwaddwstr(w, i, j, &tmp);
+		}
+		p++;
+	}
+
+//	wattroff(w, A_BOLD);
+
+}
 
 int main(int argc, char *argv[]) {/*{{{*/
-//	setlocale(LC_ALL, "");
+	setlocale(LC_ALL, "");
 	initscr();
  	cbreak();
  	keypad(stdscr, TRUE);
@@ -305,36 +343,41 @@ int main(int argc, char *argv[]) {/*{{{*/
 	int frameY = (row / 2) - (row/1.7/2);
 	int frameHeight = row / 1.7;
 	int frameWidth = col / 2;
-	mvprintw(1, 2, "%d %d", frameY * 1.6 / 4, frameX / 1.3);
-	refresh();
+//const wchar_t* wstr = L"<\u0119>";
+//mvwaddwstr(stdscr, 0, 0, wstr);
+//	mvprintw(1, 2, "%d %d", sizeof(wstr), frameX / 1.3);
+//	refresh();
 
 	start_color();
 	// init_color(COLOR_BLUE, 200, 196, 225);
 	init_pair(1, COLOR_BLUE, COLOR_BLACK);
-	init_pair(2, COLOR_BLUE, COLOR_GREEN);
+	init_pair(2, COLOR_BLACK, COLOR_GREEN);
  	WINDOW* mainWindow = newwin(frameHeight, frameWidth, frameY, frameX);
 	wborder(mainWindow, 0, 0, 0, 0, 0, 0, 0, 0);
 	wbkgd(mainWindow, COLOR_PAIR(1));
 
- 	WINDOW* boardWindow = newwin(21, 37, frameY + 2, frameX + 3);
+ 	WINDOW* boardWindow = newwin(13, 25, frameY + 2, frameX + 3);
 	wbkgd(boardWindow, COLOR_PAIR(2));
 	
-	mvwhline(boardWindow, 5 , 0 , 0, frameX / 1.3);
-	mvwhline(boardWindow, 10, 0 , 0, frameX / 1.3);
-	mvwhline(boardWindow, 15, 0 , 0, frameX / 1.3);
+	mvwhline(boardWindow, 3 , 0 , 0, frameX / 1.3);
+	mvwhline(boardWindow, 6, 0 , 0, frameX / 1.3);
+	mvwhline(boardWindow, 9, 0 , 0, frameX / 1.3);
 
-	mvwvline(boardWindow, 0, 9, 0, frameY * 1.6);
-	mvwvline(boardWindow, 0, 18,0, frameY * 1.6);
-	mvwvline(boardWindow, 0, 27, 0, frameY * 1.6);
+	mvwvline(boardWindow, 0, 6, 0, frameY * 1.6);
+	mvwvline(boardWindow, 0, 12,0, frameY * 1.6);
+	mvwvline(boardWindow, 0, 18, 0, frameY * 1.6);
 
 	wborder(boardWindow, 0, 0, 0, 0, 0, 0, 0, 0);
+
+
+
+	_dices dicesList = initDices();
+	fillBoard(boardWindow, dicesList);
 
 	wrefresh(mainWindow);	
 	wrefresh(boardWindow);	
 
-	//init_board();
-
-//	_cubes cubes_list = init_cubes();
+//	_dices cubes_list = init_cubes();
 //	read_dictionary();
 //	srand(time(NULL));
 //	prepare_gui(row/2, col/2, 10, 10);
@@ -365,7 +408,7 @@ int main(int argc, char *argv[]) {/*{{{*/
 			endwin();
 			exit(0);
 		} else if (key == 'R') {
-			cubes_list = init_cubes();
+			cubes_list = init_dices();
 			init_board();
 			reset_game();
 			refresh();
@@ -425,7 +468,7 @@ int main(int argc, char *argv[]) {/*{{{*/
 }
 /*}}}*/
 /*
-WINDOW *create_newwin(int height_, int width_, int starty_, int startx_, _cubes* list_) {
+WINDOW *create_newwin(int height_, int width_, int starty_, int startx_, _dices* list_) {
  	//box(local_win, 0 , 0);
 	int rand_wall = (rand() % 5);
 	int rand_cube(0);
