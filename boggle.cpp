@@ -79,7 +79,6 @@ struct Dice {
 };
 
 typedef vector<Dice*> _dices;
-vector<char> _lettersOnBoard;
 wchar_t _board[4][4];
 vector<string> _dictionary;
 vector<string> _inputedwords;
@@ -332,9 +331,25 @@ void fillBoard(WINDOW* w, _dices list) {
 
 }
 
+void drawBoard(WINDOW* w, int frameX, int frameY) {
+	wbkgd(w, COLOR_PAIR(2));
+	
+	mvwhline(w, 3 , 0 , 0, frameX / 1.3);
+	mvwhline(w, 6, 0 , 0, frameX / 1.3);
+	mvwhline(w, 9, 0 , 0, frameX / 1.3);
+
+	mvwvline(w, 0, 6, 0, frameY * 1.6);
+	mvwvline(w, 0, 12,0, frameY * 1.6);
+	mvwvline(w, 0, 18, 0, frameY * 1.6);
+
+	wborder(w, 0, 0, 0, 0, 0, 0, 0, 0);
+}
+
+
 int main(int argc, char *argv[]) {/*{{{*/
 	setlocale(LC_ALL, "");
 	initscr();
+	clear();
  	cbreak();
  	keypad(stdscr, TRUE);
 	int row, col;
@@ -349,7 +364,7 @@ int main(int argc, char *argv[]) {/*{{{*/
 //	refresh();
 
 	start_color();
-	// init_color(COLOR_BLUE, 200, 196, 225);
+	//init_color(COLOR_BLUE, 123, 196, 225);
 	init_pair(1, COLOR_BLUE, COLOR_BLACK);
 	init_pair(2, COLOR_BLACK, COLOR_GREEN);
  	WINDOW* mainWindow = newwin(frameHeight, frameWidth, frameY, frameX);
@@ -357,35 +372,67 @@ int main(int argc, char *argv[]) {/*{{{*/
 	wbkgd(mainWindow, COLOR_PAIR(1));
 
  	WINDOW* boardWindow = newwin(13, 25, frameY + 2, frameX + 3);
-	wbkgd(boardWindow, COLOR_PAIR(2));
-	
-	mvwhline(boardWindow, 3 , 0 , 0, frameX / 1.3);
-	mvwhline(boardWindow, 6, 0 , 0, frameX / 1.3);
-	mvwhline(boardWindow, 9, 0 , 0, frameX / 1.3);
-
-	mvwvline(boardWindow, 0, 6, 0, frameY * 1.6);
-	mvwvline(boardWindow, 0, 12,0, frameY * 1.6);
-	mvwvline(boardWindow, 0, 18, 0, frameY * 1.6);
-
-	wborder(boardWindow, 0, 0, 0, 0, 0, 0, 0, 0);
-
-
+	drawBoard(boardWindow, frameX, frameY);
 
 	_dices dicesList = initDices();
 	fillBoard(boardWindow, dicesList);
 
+ 	mvwprintw(mainWindow, 20, 3, "%s", "What words do you see?");
+
+
+	WINDOW* listWindow = newwin(12, 20, frameY + 3, frameX + 35);
+	wborder(listWindow, 0, 0, 0, 0, 0, 0, 0, 0);
+ 	mvwprintw(listWindow, 1, 3, "%s", "What words do you see?");
+
 	wrefresh(mainWindow);	
 	wrefresh(boardWindow);	
+	wrefresh(listWindow);
 
-//	_dices cubes_list = init_cubes();
+
+
+	_score = 0;
+	_scrolllistsize = 0;
+	_itemlist = new char*[80];
+
+	for (int i(0); i < 80; ++i) {
+		_itemlist[i] = new char[40];
+		for (int j(0); j < 40; ++j) {
+			_itemlist[i][j] = '\0';
+		}
+	}
+
+	//_cdkscreen = initCDKScreen(listWindow);
+	
+	char title[] = "Your matches:";
+	char* t = title;
+	//_cdkscroll = newCDKScroll(_cdkscreen, 10, 10, 10, 80, 30, t, _itemlist, 1, true, 0, true, false);
+
+	//deleteCDKScrollItem(_cdkscroll, getCDKScrollCurrentTop(_cdkscroll));
+	//drawCDKScroll(_cdkscroll, true);
+ 	//mvprintw(startx_ + 12, starty_ + 36, "%s", "Score:");
+
+	char input[255];
+	echo();
+	while (true) {
+		wmove(mainWindow, 23, 3);
+		wclrtoeol(mainWindow);
+		wgetstr(mainWindow, input);
+		mvwprintw(mainWindow, 25, 3, "%s", input);
+
+
+
+	}
+
 //	read_dictionary();
 //	srand(time(NULL));
 //	prepare_gui(row/2, col/2, 10, 10);
 //	refresh();
-//	init_board();
 //	echo();
-/*
+
 	int key(0);
+
+
+	/*
 	while (true) {
 		char input[255];
 		char new_input[255];
@@ -408,13 +455,12 @@ int main(int argc, char *argv[]) {/*{{{*/
 			endwin();
 			exit(0);
 		} else if (key == 'R') {
-			cubes_list = init_dices();
-			init_board();
-			reset_game();
 			refresh();
 		 } else {
 			char ch = static_cast<char>(key);
 			getstr(input);
+	//		mvwaddstr(stdscr, 0, 0, input);
+
 			new_input[0] = ch;
 
 			stringstream ss;
@@ -423,9 +469,8 @@ int main(int argc, char *argv[]) {/*{{{*/
 			ss >> s;
 
 			const char* mych = s.c_str();
-			strcat(final_input,mych );
+			strcat(final_input, mych);
 			strcat(final_input, input);
-
 		//	clrtobot();//bot?
 			if (strlen(final_input) >= 3 && is_on_board(final_input) && is_from_dictionary(final_input)) {
 					stringstream sss;
@@ -456,11 +501,11 @@ int main(int argc, char *argv[]) {/*{{{*/
 				mvprintw(row + 14, col, "%s", final_input);
 				attroff(COLOR_PAIR(1));
 			}
-			clrtoeol();//?
-			move(row + 12, col);
+	//		clrtoeol();//?
+	//		move(row + 12, col);
 			clrtoeol();//bot?
-	 }
-	}*/
+	 } 
+	} */
 
 //	endgame();
  	endwin();
