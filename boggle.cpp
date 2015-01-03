@@ -382,6 +382,7 @@ int main(int argc, char *argv[]) {/*{{{*/
 
 	WINDOW* listWindow = newwin(12, 20, frameY + 3, frameX + 35);
 	wborder(listWindow, 0, 0, 0, 0, 0, 0, 0, 0);
+	wbkgd(listWindow, COLOR_PAIR(1));
  	mvwprintw(listWindow, 1, 3, "%s", "What words do you see?");
 
 	wrefresh(mainWindow);	
