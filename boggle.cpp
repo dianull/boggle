@@ -346,7 +346,8 @@ void drawBoard(WINDOW* w, int frameX, int frameY) {
 }
 
 
-int main(int argc, char *argv[]) {/*{{{*/
+int main(int argc, char *argv[]) {
+
 	setlocale(LC_ALL, "");
 	initscr();
 	clear();
@@ -363,13 +364,13 @@ int main(int argc, char *argv[]) {/*{{{*/
 //	mvprintw(1, 2, "%d %d", sizeof(wstr), frameX / 1.3);
 //	refresh();
 
-	start_color();
+	//start_color();
 	//init_color(COLOR_BLUE, 123, 196, 225);
 	init_pair(1, COLOR_BLUE, COLOR_BLACK);
 	init_pair(2, COLOR_BLACK, COLOR_GREEN);
+	init_pair(3, COLOR_BLUE, COLOR_GREEN);
  	WINDOW* mainWindow = newwin(frameHeight, frameWidth, frameY, frameX);
 	wborder(mainWindow, 0, 0, 0, 0, 0, 0, 0, 0);
-	wbkgd(mainWindow, COLOR_PAIR(1));
 
  	WINDOW* boardWindow = newwin(13, 25, frameY + 2, frameX + 3);
 	drawBoard(boardWindow, frameX, frameY);
@@ -380,21 +381,15 @@ int main(int argc, char *argv[]) {/*{{{*/
  	mvwprintw(mainWindow, 20, 3, "%s", "What words do you see?");
 
 
-	WINDOW* listWindow = newwin(12, 20, frameY + 3, frameX + 35);
-	wborder(listWindow, 0, 0, 0, 0, 0, 0, 0, 0);
-	wbkgd(listWindow, COLOR_PAIR(1));
- 	mvwprintw(listWindow, 1, 3, "%s", "What words do you see?");
+	WINDOW* listWindow = newwin(25, 25, frameY + 2, frameX + 50);
+//	wborder(listWindow, 0, 0, 0, 0, 0, 0, 0, 0);
 
+	_cdkscreen = initCDKScreen(listWindow);
 	wrefresh(mainWindow);	
 	wrefresh(boardWindow);	
 	wrefresh(listWindow);
 
-
-
-	_score = 0;
-	_scrolllistsize = 0;
 	_itemlist = new char*[80];
-
 	for (int i(0); i < 80; ++i) {
 		_itemlist[i] = new char[40];
 		for (int j(0); j < 40; ++j) {
@@ -402,14 +397,15 @@ int main(int argc, char *argv[]) {/*{{{*/
 		}
 	}
 
-	//_cdkscreen = initCDKScreen(listWindow);
-	
-	char title[] = "Your matches:";
-	char* t = title;
-	//_cdkscroll = newCDKScroll(_cdkscreen, 10, 10, 10, 80, 30, t, _itemlist, 1, true, 0, true, false);
+	_cdkscroll = newCDKScroll(_cdkscreen, 10, 10, RIGHT, 40, 90, "Your matches", _itemlist, 1, true, 0, true, false);
 
-	//deleteCDKScrollItem(_cdkscroll, getCDKScrollCurrentTop(_cdkscroll));
-	//drawCDKScroll(_cdkscroll, true);
+	drawCDKScroll(_cdkscroll, true);
+	//refreshCDKScreen (_cdkscreen);
+
+	_score = 0;
+	_scrolllistsize = 0;
+
+	
  	//mvprintw(startx_ + 12, starty_ + 36, "%s", "Score:");
 
 	char input[255];
@@ -428,7 +424,6 @@ int main(int argc, char *argv[]) {/*{{{*/
 //	srand(time(NULL));
 //	prepare_gui(row/2, col/2, 10, 10);
 //	refresh();
-//	echo();
 
 	int key(0);
 
