@@ -345,6 +345,28 @@ void drawBoard(WINDOW* w, int frameX, int frameY) {
 	wborder(w, 0, 0, 0, 0, 0, 0, 0, 0);
 }
 
+void drawScrollList(WINDOW* listWindow, int frameY, int frameX) {
+	_itemlist = new char*[80];
+	for (int i(0); i < 80; ++i) {
+		_itemlist[i] = new char[40];
+		for (int j(0); j < 40; ++j) {
+			_itemlist[i][j] = '\0';
+		}
+	}
+
+	listWindow = newwin(32, 25, frameY + 2, frameX + 50);
+//	wborder(listWindow, 0, 0, 0, 0, 0, 0, 0, 0);
+ 	mvwprintw(listWindow, 30, 1, "%s", "Score:");
+	wrefresh(listWindow);
+	_cdkscreen = initCDKScreen(listWindow);
+	_cdkscroll = newCDKScroll(_cdkscreen, 10, 10, RIGHT, 30, 40, "Your matches", _itemlist, 1, true, 0, true, false);
+	drawCDKScroll(_cdkscroll, true);
+
+	_score = 0;
+	_scrolllistsize = 0;
+	
+
+}
 
 int main(int argc, char *argv[]) {
 
@@ -368,7 +390,6 @@ int main(int argc, char *argv[]) {
 	//init_color(COLOR_BLUE, 123, 196, 225);
 	init_pair(1, COLOR_BLUE, COLOR_BLACK);
 	init_pair(2, COLOR_BLACK, COLOR_GREEN);
-	init_pair(3, COLOR_BLUE, COLOR_GREEN);
  	WINDOW* mainWindow = newwin(frameHeight, frameWidth, frameY, frameX);
 	wborder(mainWindow, 0, 0, 0, 0, 0, 0, 0, 0);
 
@@ -377,44 +398,27 @@ int main(int argc, char *argv[]) {
 
 	_dices dicesList = initDices();
 	fillBoard(boardWindow, dicesList);
-
- 	mvwprintw(mainWindow, 20, 3, "%s", "What words do you see?");
-
-
-	WINDOW* listWindow = newwin(25, 25, frameY + 2, frameX + 50);
-//	wborder(listWindow, 0, 0, 0, 0, 0, 0, 0, 0);
-
-	_cdkscreen = initCDKScreen(listWindow);
 	wrefresh(mainWindow);	
 	wrefresh(boardWindow);	
-	wrefresh(listWindow);
 
-	_itemlist = new char*[80];
-	for (int i(0); i < 80; ++i) {
-		_itemlist[i] = new char[40];
-		for (int j(0); j < 40; ++j) {
-			_itemlist[i][j] = '\0';
-		}
-	}
+	WINDOW* listWindow;
+	drawScrollList(listWindow, frameY, frameX);
 
-	_cdkscroll = newCDKScroll(_cdkscreen, 10, 10, RIGHT, 40, 90, "Your matches", _itemlist, 1, true, 0, true, false);
+	WINDOW* inputWindow = newwin(8, 30, frameY + 27, frameX + 3);
+	//wborder(inputWindow, 0, 0, 0, 0, 0, 0, 0, 0);
+ 	mvwprintw(inputWindow, 1, 1, "%s", "What words do you see?");
+	wrefresh(inputWindow);
 
-	drawCDKScroll(_cdkscroll, true);
-	//refreshCDKScreen (_cdkscreen);
-
-	_score = 0;
-	_scrolllistsize = 0;
-
-	
- 	//mvprintw(startx_ + 12, starty_ + 36, "%s", "Score:");
+		
 
 	char input[255];
 	echo();
 	while (true) {
-		wmove(mainWindow, 23, 3);
-		wclrtoeol(mainWindow);
-		wgetstr(mainWindow, input);
-		mvwprintw(mainWindow, 25, 3, "%s", input);
+		wmove(inputWindow, 3, 1);
+		wclrtoeol(inputWindow);
+		wgetstr(inputWindow, input);
+		wclrtobot(inputWindow);
+		mvwprintw(inputWindow, 5, 1, "%s", input);
 
 
 
