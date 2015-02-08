@@ -1,4 +1,8 @@
+#include <boost/iostreams/stream.hpp>
+#include <boost/iostreams/categories.hpp> 
+#include <boost/iostreams/code_converter.hpp>
 #include <ncursesw/curses.h>"
+#include <boost/locale.hpp>
 #include <menu.h>
 #include <stdio.h>
 #include <ctype.h>
@@ -20,11 +24,13 @@
 #include <boost/iostreams/device/file.hpp>
 #include <boost/iostreams/stream.hpp>
 #include <ostream>
+#include <stack>
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 #define CTRLD 	4
 
 using namespace std;
+using namespace boost::locale;
 
 /*
 static const short _dicesWalls[16][6] = {
@@ -78,16 +84,35 @@ struct Dice {
 	{}
 };
 
+struct Letter {
+	Letter() {}
+	Letter(const Letter& copy) {
+		letter = copy.letter;
+		i = copy.i;
+		j = copy.j;
+		visited = copy.visited;
+	}
+	wstring letter;
+	int i;
+	int j;
+	bool visited;
+};
+
+
+string searchWord;
 typedef vector<Dice*> _dices;
 wchar_t _board[4][4];
+Letter _boardLowerCase[4][4];
 vector<string> _dictionary;
 vector<string> _inputedwords;
 WINDOW *create_newwin(int height_, int width_, int starty_, int startx_, _dices* list_);
 char** _itemlist; 
 int _scrolllistsize;
 int _score;
-CDKSCROLL* _cdkscroll;
+CDKSCROLL* _cdkscrollLeft;
+CDKSCROLL* _cdkscrollRight;
 CDKSCREEN* _cdkscreen;
+WINDOW* mainWindow;
 
 const int di[] = {-1, 0, 1, -1, 1, -1, 0, 1};
 const int dj[] = {-1, -1, -1, 0, 0, 1, 1, 1};
@@ -99,7 +124,7 @@ bool is_from_dictionary(char* input_) {/*{{{*/
 }
 /*}}}*/
 
-void read_dictionary() {/*{{{*/
+void read_dictionary() {
     string name;
  		std::string filename("dict.txt");
     boost::iostreams::stream<boost::iostreams::file_source> file(filename.c_str());
@@ -108,61 +133,66 @@ void read_dictionary() {/*{{{*/
       _dictionary.push_back(line);
     }
 }
-/*}}}*/
 
-bool into_the_board(string word_, int i_, int j_) {/*{{{*/
-	char ch = _board[i_][j_];//s from board - upper
-	char ch2 = word_[0];//s2 from input - lower
-	toupper(ch2);
-			stringstream ss;
-			string s;
-			ss << ch;
-			ss >> s;
-			stringstream sss;
-			string s2;
-			sss << ch2;
-			sss >> s2;
-	if (word_.length() == 0)
-		return true;
-	if (s2 == s) {
-		for (int k(0); k < 8; ++k) {
-			if (i_ + di[k] >= 0 && i_ + di[k] < 4 && j_ + dj[k] >= 0 && j_ + dj[k] < 4) {
-				s = '!';
-				bool is = into_the_board(word_.substr(1), i_ + di[k], j_ + dj[k]);
-				s = s2;
-				if (is)
-					return true;
-			}	
-		}
-	}  
-	return false;
+
+stack<Letter> getNeighbours(int i, int j) { 
+	stack<Letter> neighbours;
+	for (int k(0); k < 8; ++k) {
+		if (i + di[k] >= 0 && i + di[k] < 4 && j + dj[k] >= 0 && j + dj[k] < 4) {
+			Letter l = _boardLowerCase[i + di[k]][j + dj[k]];
+			neighbours.push(l/*_boardLowerCase[i + di[k]][j + dj[k]]*/);
+
+		}	
+	}
+	return neighbours;
 }
-/*}}}*/
 
-bool is_on_board(const char* input_) {/*{{{*/
-	string s = string(input_);
-	boost::to_upper(s);
+int tries(0);
+stack<Letter> neighbours;
+
+bool checkBoard(string word, Letter l) {
 	
-	for (int i(0); i < 4; ++i) {
-		for (int j(0); j < 4; ++j) {
-			if (s[0] == _board[i][j]) {
-				for (int k(0); k < 8; ++k) {
-					if (i + di[k] >= 0 && i + di[k] < 4 && j + dj[k] >= 0 && j + dj[k] < 4) {
-						_board[i][j] = '!';
-						bool is = into_the_board(s.substr(1), i + di[k], j + dj[k]);
-						_board[i][j] = s[0];
-						if (is)
-							return true;
-					}	
+	if (!l.visited) {
+		if (word[0] == l.letter[0]) {
+			l.visited = true;
+			tries++;
+			std::cout << tries << "/" << searchWord.length();
+			stack<Letter> neighbours = getNeighbours(l.i, l.j);
+			
+			while (!neighbours.empty()) {
+				Letter l = neighbours.top();
+				neighbours.pop();
+						
+				if (l.letter[0] == searchWord[tries]) {
+					if (tries == searchWord.length() -1)
+						return true;
+					checkBoard(searchWord.substr(tries), l);
 				}
 			}
 		}
 	}
 	return false;
 }
-/*}}}*/
 
-void validate_letter_case(char* c_) { //converting polish diacritics to lowercase/*{{{*/
+bool is_on_board() {
+	tries = 0;
+	for (int i(0); i < 4; ++i) {
+		for (int j(0); j < 4; ++j) {
+			
+			Letter l = _boardLowerCase[i][j];
+	//		if (searchWord[0] == _boardLowerCase[i][j][0])
+			if (!checkBoard(searchWord, l)) {
+				continue;
+			} else {
+				tries = 0;
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+void validate_letter_case(char* c_) {
 	switch (*c_) {
 		case '¡':
 			*c_ = '±';
@@ -193,7 +223,7 @@ void validate_letter_case(char* c_) { //converting polish diacritics to lowercas
 			break;
 	}
 
-}/*}}}*/
+}
 
 _dices initDices() {
 
@@ -233,12 +263,10 @@ void calculate_score(const char* input_, int* score_) {/*{{{*/
 			break;
 	}
 }
-/*}}}*/
 
 bool is_duplicated(const string& input_) {/*{{{*/
 		return (find(_inputedwords.begin(), _inputedwords.end(), input_) != _inputedwords.end());
 }
-/*}}}*/
 
 void reset_game() {/*{{{*/
 //	_itemlist = new char*[15];
@@ -260,31 +288,6 @@ void endgame() {
 void prepare_gui(int startx_, int starty_, int liststartx_, int liststarty_ ) {
 	mvprintw(0, 0, "%s", "*** Press Q to quit\n*** Press TAB to switch between scroll list and input\n*** Press R to get new board");
  	mvprintw(startx_ + 10, starty_, "%s", "What words do you see?");
-	init_pair(1, COLOR_RED, COLOR_BLACK);
-	init_pair(2, COLOR_GREEN, COLOR_BLACK);
-	init_pair(3, COLOR_YELLOW, COLOR_BLACK);
-
-	_score = 0;
-	_scrolllistsize = 0;
-	_itemlist = new char*[80];
-
-	for (int i(0); i < 80; ++i) {
-		_itemlist[i] = new char[40];
-		for (int j(0); j < 40; ++j) {
-			_itemlist[i][j] = '\0';
-		}
-	}
-
-	WINDOW* listwin = newwin(12, 20, startx_, starty_);
-	_cdkscreen = initCDKScreen(listwin);
-	
-	char title[] = "Your matches:";
-	char* t = title;
-	//_cdkscroll = newCDKScroll(_cdkscreen, 10, 10, 10, 80, 30, t, _itemlist, 1, true, 0, true, false);
-
-	//deleteCDKScrollItem(_cdkscroll, getCDKScrollCurrentTop(_cdkscroll));
-	//drawCDKScroll(_cdkscroll, true);
- 	//mvprintw(startx_ + 12, starty_ + 36, "%s", "Score:");
 }
 
 
@@ -292,6 +295,9 @@ void fillBoard(WINDOW* w, _dices list) {
 
 	srand(time(NULL));
 	
+
+	generator gen;
+	std::locale loc = gen("");
 
 	for (int p(0); p < 4; ++p) {
 		for (int q(0); q < 4; ++q) {
@@ -308,6 +314,15 @@ void fillBoard(WINDOW* w, _dices list) {
 			wchar_t c = list.at(rand_cube)->_walls[rand_wall];
 	//		_lettersOnBoard.push_back(*c);
 			_board[p][q] = c;
+				wstring s(&c);
+				s = fold_case(normalize(s, norm_default, loc), loc);
+
+			Letter l;
+			l.i = p;
+			l.j = q;
+			l.letter = s;
+			l.visited = false;
+			_boardLowerCase[p][q] = l; //s;
 			//mvwaddstr(local_win, 1.7, 2, c);
 			if (counter > 0)
 				list.erase(list.begin() + (rand_cube));
@@ -317,12 +332,16 @@ void fillBoard(WINDOW* w, _dices list) {
 
 	//wattron(w, A_BOLD);
 
+
 	int id(0);
 	for (int i(2),  p(0); i < 12; i += 3) {
 		for (int j(3), q(0); j < 22; j += 6) {
-			wchar_t tmp = _board[p][q++]; //_lettersOnBoard.at(id++);
-			const wchar_t* wstr = L"\u0119";
-			mvwaddwstr(w, i, j, &tmp);
+			 wchar_t tmp = _board[p][q++]; //_lettersOnBoard.at(id++);
+	//		const wchar_t* wstr = L"\u0119";
+				mvwaddwstr(w, i, j, &tmp);
+		//		const wchar_t* x = s.c_str();
+		//		_board[p][q] = *x;
+		//		q++;
 		}
 		p++;
 	}
@@ -345,7 +364,7 @@ void drawBoard(WINDOW* w, int frameX, int frameY) {
 	wborder(w, 0, 0, 0, 0, 0, 0, 0, 0);
 }
 
-void drawScrollList(WINDOW* listWindow, int frameY, int frameX) {
+void drawScrollList(WINDOW*& listWindow, int frameY, int frameX) {
 	_itemlist = new char*[80];
 	for (int i(0); i < 80; ++i) {
 		_itemlist[i] = new char[40];
@@ -354,19 +373,23 @@ void drawScrollList(WINDOW* listWindow, int frameY, int frameX) {
 		}
 	}
 
-	listWindow = newwin(32, 25, frameY + 2, frameX + 50);
+	listWindow = newwin(32, 50, frameY + 2, frameX + 40);
 //	wborder(listWindow, 0, 0, 0, 0, 0, 0, 0, 0);
  	mvwprintw(listWindow, 30, 1, "%s", "Score:");
+ 	mvwprintw(listWindow, 30, 28, "%s", "Score:");
 	wrefresh(listWindow);
 	_cdkscreen = initCDKScreen(listWindow);
-	_cdkscroll = newCDKScroll(_cdkscreen, 10, 10, RIGHT, 30, 40, "Your matches", _itemlist, 1, true, 0, true, false);
-	drawCDKScroll(_cdkscroll, true);
+	_cdkscrollLeft = newCDKScroll(_cdkscreen, LEFT, 10, RIGHT, 30, 22, "Your matches", _itemlist, 1, true, 0, true, false);
+	_cdkscrollRight = newCDKScroll(_cdkscreen, RIGHT, 10, RIGHT, 30, 22, "Opponent matches", _itemlist, 1, true, 0, true, false);
+	drawCDKScroll(_cdkscrollLeft, true);
+	drawCDKScroll(_cdkscrollRight, true);
 
 	_score = 0;
 	_scrolllistsize = 0;
 	
 
 }
+
 
 int main(int argc, char *argv[]) {
 
@@ -383,14 +406,9 @@ int main(int argc, char *argv[]) {
 	int frameWidth = col / 2;
 //const wchar_t* wstr = L"<\u0119>";
 //mvwaddwstr(stdscr, 0, 0, wstr);
-//	mvprintw(1, 2, "%d %d", sizeof(wstr), frameX / 1.3);
-//	refresh();
 
-	//start_color();
 	//init_color(COLOR_BLUE, 123, 196, 225);
-	init_pair(1, COLOR_BLUE, COLOR_BLACK);
-	init_pair(2, COLOR_BLACK, COLOR_GREEN);
- 	WINDOW* mainWindow = newwin(frameHeight, frameWidth, frameY, frameX);
+ 	mainWindow = newwin(frameHeight, frameWidth, frameY, frameX);
 	wborder(mainWindow, 0, 0, 0, 0, 0, 0, 0, 0);
 
  	WINDOW* boardWindow = newwin(13, 25, frameY + 2, frameX + 3);
@@ -401,6 +419,7 @@ int main(int argc, char *argv[]) {
 	wrefresh(mainWindow);	
 	wrefresh(boardWindow);	
 
+
 	WINDOW* listWindow;
 	drawScrollList(listWindow, frameY, frameX);
 
@@ -408,30 +427,56 @@ int main(int argc, char *argv[]) {
 	//wborder(inputWindow, 0, 0, 0, 0, 0, 0, 0, 0);
  	mvwprintw(inputWindow, 1, 1, "%s", "What words do you see?");
 	wrefresh(inputWindow);
-
 		
+//	read_dictionary();
 
+
+	start_color();
+	init_pair(1, COLOR_GREEN, COLOR_BLACK);
+	init_pair(2, COLOR_RED, COLOR_BLACK);
+	
 	char input[255];
 	echo();
+
+	generator gen;
+	std::locale loc = gen("");
+
+
 	while (true) {
 		wmove(inputWindow, 3, 1);
 		wclrtoeol(inputWindow);
 		wgetstr(inputWindow, input);
 		wclrtobot(inputWindow);
-		mvwprintw(inputWindow, 5, 1, "%s", input);
 
+		string s = string(input);
 
+		s = fold_case(normalize(s, norm_default, loc), loc);
+
+		//	wattron(inputWindow, COLOR_PAIR(1));
+		//	wattroff(inputWindow, COLOR_PAIR(1));
+		searchWord = string(input); 
+		if (strlen(input) >= 3 && is_on_board() /*&& is_from_dictionary(input)*/) {
+
+			++_scrolllistsize;
+			calculate_score(input, &_score);
+			insertCDKScrollItem(_cdkscrollLeft, input);
+			_inputedwords.push_back(s);
+			mvwprintw(listWindow, 30, 10, "%d", _score);
+			mvwprintw(inputWindow, 5, 1, "%s", s.c_str());
+			wrefresh(listWindow);
+			setCDKScrollCurrentTop(_cdkscrollLeft, 0);
+			drawCDKScroll(_cdkscrollLeft, true);
+
+		} else {
+			mvwprintw(inputWindow, 5, 1, "%s", "zle");
+		}
+		
 
 	}
 
-//	read_dictionary();
 //	srand(time(NULL));
-//	prepare_gui(row/2, col/2, 10, 10);
-//	refresh();
 
 	int key(0);
-
-
 	/*
 	while (true) {
 		char input[255];
@@ -511,27 +556,5 @@ int main(int argc, char *argv[]) {
  	endwin();
  	return 0;
 }
-/*}}}*/
-/*
-WINDOW *create_newwin(int height_, int width_, int starty_, int startx_, _dices* list_) {
- 	//box(local_win, 0 , 0);
-	int rand_wall = (rand() % 5);
-	int rand_cube(0);
-	int counter(list_->size());
-
-	if (counter > 0)
-		rand_cube = (rand() % (counter));
-	else
-		rand_cube = 1;
-
-	char c[2] = "1";
-	*c = list_->at(rand_cube)->_walls[rand_wall];
-	_lettersOnBoard.push_back(*c);
- 	//mvwaddstr(local_win, 1.7, 2, c);
-	if (counter > 0)
-		list_->erase(list_->begin() + (rand_cube));
- 	//wrefresh(local_win);
- 	return local_win;
-}*/
 
 
