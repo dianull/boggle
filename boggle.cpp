@@ -140,90 +140,77 @@ stack<Letter> getNeighbours(int i, int j) {
 	for (int k(0); k < 8; ++k) {
 		if (i + di[k] >= 0 && i + di[k] < 4 && j + dj[k] >= 0 && j + dj[k] < 4) {
 			Letter l = _boardLowerCase[i + di[k]][j + dj[k]];
-			neighbours.push(l/*_boardLowerCase[i + di[k]][j + dj[k]]*/);
+			neighbours.push(l);
 
 		}	
 	}
 	return neighbours;
 }
 
-int tries(0);
+int hits(0);
 stack<Letter> neighbours;
+bool eos = false;
+string res;
 
 bool checkBoard(string word, Letter l) {
 	
-	if (!l.visited) {
+	if (!_boardLowerCase[l.i][l.j].visited) {
 		if (word[0] == l.letter[0]) {
-			l.visited = true;
-			tries++;
-			std::cout << tries << "/" << searchWord.length();
+			_boardLowerCase[l.i][l.j].visited = true;
+			res += word[0];
+			hits++;
+			if ((hits == searchWord.length()) && (res == searchWord)) {
+				return true;
+			}
+		
 			stack<Letter> neighbours = getNeighbours(l.i, l.j);
 			
 			while (!neighbours.empty()) {
 				Letter l = neighbours.top();
 				neighbours.pop();
 						
-				if (l.letter[0] == searchWord[tries]) {
-					if (tries == searchWord.length() -1)
-						return true;
-					checkBoard(searchWord.substr(tries), l);
-				}
+				if (checkBoard(searchWord.substr(hits), l))
+					return true;
+					
+			
+				
 			}
-		}
+			res = res.substr(0, res.length() - 1);
+		} 
 	}
+	_boardLowerCase[l.i][l.j].visited = false;
 	return false;
+
+	
 }
 
 bool is_on_board() {
-	tries = 0;
+
+	hits = 0;
+	res = "";
+
+	for (int i(0); i < 4; ++i) {
+		for (int j(0); j < 4; ++j) {
+			_boardLowerCase[i][j].visited = false;
+		}
+	}
+
 	for (int i(0); i < 4; ++i) {
 		for (int j(0); j < 4; ++j) {
 			
 			Letter l = _boardLowerCase[i][j];
-	//		if (searchWord[0] == _boardLowerCase[i][j][0])
-			if (!checkBoard(searchWord, l)) {
-				continue;
-			} else {
-				tries = 0;
+			if (checkBoard(searchWord, l)) {
 				return true;
+			} else {
+
+				continue;
 			}
+
 		}
 	}
 	return false;
 }
 
-void validate_letter_case(char* c_) {
-	switch (*c_) {
-		case '¡':
-			*c_ = '±';
-			break;
-		case 'Ê':
-			*c_ = 'ê';
-			break;
-		case 'Ó':
-			*c_ = 'ó';
-			break;
-		case '£':
-			*c_ = '³';
-			break;
-		case '¬':
-			*c_ = '¼';
-			break;
-		case '¯':
-			*c_ = '¿';
-			break;
-		case 'Ñ':
-			*c_ = 'ñ';
-			break;
-		case '¦':
-			*c_ = '¶';
-			break;
-		case 'Æ':
-			*c_ = 'æ';
-			break;
-	}
-
-}
 
 _dices initDices() {
 
