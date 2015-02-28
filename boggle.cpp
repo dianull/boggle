@@ -147,10 +147,10 @@ stack<Letter> getNeighbours(int i, int j) {
 	return neighbours;
 }
 
-int hits(0);
 stack<Letter> neighbours;
 bool eos = false;
 string res;
+Letter root;
 
 bool checkBoard(string word, Letter l) {
 	
@@ -158,8 +158,7 @@ bool checkBoard(string word, Letter l) {
 		if (word[0] == l.letter[0]) {
 			_boardLowerCase[l.i][l.j].visited = true;
 			res += word[0];
-			hits++;
-			if ((hits == searchWord.length()) && (res == searchWord)) {
+			if ((res.length() == searchWord.length()) && (res == searchWord)) {
 				return true;
 			}
 		
@@ -169,7 +168,7 @@ bool checkBoard(string word, Letter l) {
 				Letter l = neighbours.top();
 				neighbours.pop();
 						
-				if (checkBoard(searchWord.substr(hits), l))
+				if (checkBoard(searchWord.substr(res.length()), l))
 					return true;
 					
 			
@@ -178,7 +177,8 @@ bool checkBoard(string word, Letter l) {
 			res = res.substr(0, res.length() - 1);
 		} 
 	}
-	_boardLowerCase[l.i][l.j].visited = false;
+	if (root.i != l.i && root.j != l.j)
+		_boardLowerCase[l.i][l.j].visited = false;
 	return false;
 
 	
@@ -186,7 +186,6 @@ bool checkBoard(string word, Letter l) {
 
 bool is_on_board() {
 
-	hits = 0;
 	res = "";
 
 	for (int i(0); i < 4; ++i) {
@@ -199,6 +198,7 @@ bool is_on_board() {
 		for (int j(0); j < 4; ++j) {
 			
 			Letter l = _boardLowerCase[i][j];
+			root = l;
 			if (checkBoard(searchWord, l)) {
 				return true;
 			} else {
