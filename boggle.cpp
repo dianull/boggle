@@ -140,7 +140,8 @@ stack<Letter> getNeighbours(int i, int j) {
 	for (int k(0); k < 8; ++k) {
 		if (i + di[k] >= 0 && i + di[k] < 4 && j + dj[k] >= 0 && j + dj[k] < 4) {
 			Letter l = _boardLowerCase[i + di[k]][j + dj[k]];
-			neighbours.push(l);
+			if (!l.visited)
+				neighbours.push(l);
 
 		}	
 	}
@@ -158,6 +159,7 @@ bool checkBoard(string word, Letter l) {
 		if (word[0] == l.letter[0]) {
 			_boardLowerCase[l.i][l.j].visited = true;
 			res += word[0];
+			root = l;
 			if ((res.length() == searchWord.length()) && (res == searchWord)) {
 				return true;
 			}
@@ -184,7 +186,7 @@ bool checkBoard(string word, Letter l) {
 	
 }
 
-bool is_on_board() {
+bool isOnBoard() {
 
 	res = "";
 
@@ -227,7 +229,7 @@ _dices initDices() {
  	return dices;
 }
 
-void calculate_score(const char* input_, int* score_) {/*{{{*/
+void calculate_score(const char* input_, int* score_) {
 	int l(strlen(input_));
 	switch(l) {
 		case 3:
@@ -251,11 +253,11 @@ void calculate_score(const char* input_, int* score_) {/*{{{*/
 	}
 }
 
-bool is_duplicated(const string& input_) {/*{{{*/
+bool isDuplicated(const string& input_) {
 		return (find(_inputedwords.begin(), _inputedwords.end(), input_) != _inputedwords.end());
 }
 
-void reset_game() {/*{{{*/
+void reset_game() {
 //	_itemlist = new char*[15];
 	for (int i(0); i < 100; ++i) {
 		_itemlist[i] = new char[81];
@@ -265,7 +267,6 @@ void reset_game() {/*{{{*/
 	}
 	_score = 0;
 }
-/*}}}*/
 
 void endgame() {
 	delete[] _board;
@@ -442,7 +443,7 @@ int main(int argc, char *argv[]) {
 		//	wattron(inputWindow, COLOR_PAIR(1));
 		//	wattroff(inputWindow, COLOR_PAIR(1));
 		searchWord = string(input); 
-		if (strlen(input) >= 3 && is_on_board() /*&& is_from_dictionary(input)*/) {
+		if (strlen(input) >= 3 && isOnBoard() /*&& is_from_dictionary(input)*/) {
 
 			++_scrolllistsize;
 			calculate_score(input, &_score);
