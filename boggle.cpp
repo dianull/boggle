@@ -1,4 +1,8 @@
 #include <boost/iostreams/stream.hpp>
+#include <boost/algorithm/string/predicate.hpp>
+#include <boost/lexical_cast.hpp>
+#include <clocale>
+#include <locale>
 #include <boost/iostreams/categories.hpp> 
 #include <boost/iostreams/code_converter.hpp>
 #include <ncursesw/curses.h>"
@@ -32,25 +36,6 @@
 using namespace std;
 using namespace boost::locale;
 
-/*
-static const short _dicesWalls[16][6] = {
-	{'R', 'W', 'I', 'I', 'B', 'N'},
-	{'K','N', 'O', 'E', 'D', 'R'},
-	{'Y','Z', 'O', 'E', 'A', 'Z'},
-	{'O','T', 'W', 'C', 'S', 'ø'},
-	{'D', 'A', 'Y', 'ø', 'A', 'E'},
-	{'B', 'Z', 'P', 'E', 'ø', 'E'},
-	{'A', 'K', 'I', 'Y', 'A', 'M'},
-	{'M', '”', 'G', 'ø', 'C', 'T'},
-	{'I', 'R', 'P', 'O', 'ø', 'K'},
-	{'E', 'U', 'Y', 'A', 'I', 'O'},
-	{'N', 'I', 'A', 'P', 'N', 'C'},
-	{'J', 'ø', 'F', 'L', 'H', 'S'},
-	{'G', 'R', 'S', 'O', 'A', 'L'},
-	{'U', 'M', 'J', 'T', 'ø', 'Z'},
-	{'ø', 'W', 'E', 'I', 'L', 'S'},
-	{'N', 'ø', 'D', 'Z', 'W', 'H'}};
-*/
 
 static const wchar_t* _dicesWalls[16] = {
 	L"RWIIBN",
@@ -71,6 +56,25 @@ static const wchar_t* _dicesWalls[16] = {
 	L"N\u0143DZWH"
 };
 
+static const string _dicesWallsInString[16] = {
+	"rwiibn",
+	"knoedr",
+	"yzoeaz",
+	"otwcsƒÖ",
+	"dayƒôae",
+	"bzpe√≥e",
+	"akiyam",
+	"m≈õg≈Çct",
+	"irpoƒák",
+	"euyaio",
+	"niapnc",
+	"j≈Ñflhc",
+	"grsoal",
+	"umjt≈∫z",
+	"≈ºweils",
+	"n≈Ñdzwh"
+};
+
 ///	int width(6);
 char *choices[] = {
 	  "Choice 1",
@@ -80,8 +84,12 @@ char *choices[] = {
 
 struct Dice {
 	const wchar_t* _walls;
+	string _wallsInString;
 	Dice(const wchar_t* letters) : _walls(letters)
 	{}
+	Dice(string letters) : _wallsInString(letters)
+	{}
+
 };
 
 struct Letter {
@@ -92,7 +100,7 @@ struct Letter {
 		j = copy.j;
 		visited = copy.visited;
 	}
-	wstring letter;
+	string letter;
 	int i;
 	int j;
 	bool visited;
@@ -152,18 +160,31 @@ stack<Letter> neighbours;
 bool eos = false;
 string res;
 Letter root;
+int hits = 0;
 
-bool checkBoard(string word, Letter l) {
+_dices tempDices;
+bool checkBoard(string wordd, Letter l) {
 	
+/*	std::cout << "<<<";
+	for (int p(0); p < 4; ++p) {
+		for (int q(0); q < 4; ++q) {
+			std::cout << _boardLowerCase[p][q].letter;
+		}
+	}*/
 	if (!_boardLowerCase[l.i][l.j].visited) {
-		if (word[0] == l.letter[0]) {
+		if (boost::starts_with(wordd, l.letter)) {
+//		if (word[0] == l.letter[0]) {
 			_boardLowerCase[l.i][l.j].visited = true;
-			res += word[0];
+			boost::locale::generator gen;
+			boost::locale::boundary::ssegment_index map(boost::locale::boundary::character, wordd.begin(), wordd.end(), gen("en_US.UTF-8")); 
+			boost::locale::boundary::ssegment_index::iterator it=map.begin();
+		//	std::cout << *it << ",res:";
+			res += *it;
+	//		std::cout << res <<":";
 			root = l;
 			if ((res.length() == searchWord.length()) && (res == searchWord)) {
 				return true;
 			}
-		
 			stack<Letter> neighbours = getNeighbours(l.i, l.j);
 			
 			while (!neighbours.empty()) {
@@ -189,6 +210,7 @@ bool checkBoard(string word, Letter l) {
 bool isOnBoard() {
 
 	res = "";
+	hits = 0;
 
 	for (int i(0); i < 4; ++i) {
 		for (int j(0); j < 4; ++j) {
@@ -221,9 +243,12 @@ _dices initDices() {
 	for (int i(0); i < 16; ++i) {
 
 		const wchar_t* str = _dicesWalls[i];
-
 		Dice* dice = new Dice(str);
 		dices.push_back(dice);
+
+		string s = _dicesWallsInString[i];
+		Dice* dice2 = new Dice(s);
+		tempDices.push_back(dice2);
 	}
 
  	return dices;
@@ -286,6 +311,7 @@ void fillBoard(WINDOW* w, _dices list) {
 
 	generator gen;
 	std::locale loc = gen("");
+	boost::locale::generator g;
 
 	for (int p(0); p < 4; ++p) {
 		for (int q(0); q < 4; ++q) {
@@ -298,22 +324,29 @@ void fillBoard(WINDOW* w, _dices list) {
 			else
 				rand_cube = 1;
 
-	//		char c[2] = "1";
 			wchar_t c = list.at(rand_cube)->_walls[rand_wall];
-	//		_lettersOnBoard.push_back(*c);
+			string str = tempDices.at(rand_cube)->_wallsInString;
+	//		string str = _dicesWallsInString[15 - rand_cube];
 			_board[p][q] = c;
 				wstring s(&c);
 				s = fold_case(normalize(s, norm_default, loc), loc);
 
+			boost::locale::boundary::ssegment_index map(boost::locale::boundary::character, str.begin(), str.end(), g("en_US.UTF-8")); 
+			boost::locale::boundary::ssegment_index::iterator it = map.begin();
+			int i = 0;
+			while (i++ < rand_wall)
+				it++;
+
 			Letter l;
 			l.i = p;
 			l.j = q;
-			l.letter = s;
+			l.letter = *it;
 			l.visited = false;
-			_boardLowerCase[p][q] = l; //s;
-			//mvwaddstr(local_win, 1.7, 2, c);
-			if (counter > 0)
+			_boardLowerCase[p][q] = l;
+			if (counter > 0) {
 				list.erase(list.begin() + (rand_cube));
+				tempDices.erase(tempDices.begin() + (rand_cube));
+			}
 		}
 
 	}
@@ -442,15 +475,17 @@ int main(int argc, char *argv[]) {
 
 		//	wattron(inputWindow, COLOR_PAIR(1));
 		//	wattroff(inputWindow, COLOR_PAIR(1));
+
 		searchWord = string(input); 
+
 		if (strlen(input) >= 3 && isOnBoard() /*&& is_from_dictionary(input)*/) {
 
 			++_scrolllistsize;
 			calculate_score(input, &_score);
-			insertCDKScrollItem(_cdkscrollLeft, input);
+			insertCDKScrollItem(_cdkscrollLeft, searchWord.c_str());
 			_inputedwords.push_back(s);
 			mvwprintw(listWindow, 30, 10, "%d", _score);
-			mvwprintw(inputWindow, 5, 1, "%s", s.c_str());
+			mvwprintw(inputWindow, 5, 1, "%s", searchWord.c_str());
 			wrefresh(listWindow);
 			setCDKScrollCurrentTop(_cdkscrollLeft, 0);
 			drawCDKScroll(_cdkscrollLeft, true);
