@@ -50,7 +50,6 @@ void Client::sayHello() {
 	std::string rpl = std::string(static_cast<char*>(reply.data()), reply.size());
 
 	printf("server reply %s of size %d\n", rpl.c_str(), reply.size());
-	_currentBoardLetters = rpl;
 	
 
 
