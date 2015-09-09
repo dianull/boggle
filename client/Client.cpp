@@ -1,8 +1,11 @@
 ﻿#include <stdio.h>
+#include <vector>
 #include <string.h>
 #include "Client.h"
 #include <zmq.hpp>
 #include <errno.h>
+
+using namespace std;
 
 Client::Client(std::string host) : _host(host) {
 
@@ -47,9 +50,11 @@ void Client::sayHello() {
 	
 	zmq::message_t reply;
 	socket.recv(&reply);
-	std::string rpl = std::string(static_cast<char*>(reply.data()), reply.size());
-
-	printf("server reply %s of size %d\n", rpl.c_str(), reply.size());
+	//std::string rpl = std::string(static_cast<char*>(reply.data()), reply.size());
+	int* rpl  = static_cast<int*>(reply.data());
+	vector<int> vec(rpl, rpl + reply.size());
+	printf("server reply  of size %d %d\n", reply.size(), vec[3]);
+	_currentBoardLetters = vec;
 	
 
 

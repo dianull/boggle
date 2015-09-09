@@ -4,6 +4,7 @@
 #include <boost/algorithm/string.hpp>
 #include <utility>
 
+
 static const std::string _lettersSet[16] = {
 	"rwiibn",
 	"knoedr",
@@ -15,7 +16,7 @@ static const std::string _lettersSet[16] = {
 	"mśgłct",
 	"irpoćk",
 	"euyaio",
-	"niapnc",
+	"piannc",
 	"jńflhc",
 	"grsoal",
 	"umjtźz",
@@ -25,8 +26,8 @@ static const std::string _lettersSet[16] = {
 
 
 struct Dice {
-	std::string _walls;
-	Dice(std::string letters) : _walls(letters) {}
+	std::string  _walls;
+	Dice(const std::string& letters) : _walls(letters) {}
 
 };
 
@@ -51,13 +52,13 @@ class Board {
 		Board();
 		~Board();
 
-		typedef std::pair<int, int> indexes_t;
+		typedef std::vector<int> indexes_t;
 		Letter _board[4][4];
 
 		std::vector<Dice*> createDices();
 		void fillBoard();
-		std::string getCurrentBoard();
-		std::string _currentBoardLetters;
+		indexes_t getCurrentBoard();
+		indexes_t _currentBoardLettersIds;
 		
 };
 

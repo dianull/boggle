@@ -55,12 +55,12 @@ void Server::init() {
 					printf("Received BOARD_REQ\n");
 					Board board;
 					board.fillBoard();
-					std::string letters = board.getCurrentBoard();
-					printf("Sending %s\n", letters.c_str());
+					Board::indexes_t letters = board.getCurrentBoard();
+				//	printf("Sending %s\n", letters.c_str());
+					int len = 16 * 2 * (sizeof(int));
+					zmq::message_t reply2(len);
 
-					zmq::message_t reply2(letters.length());
-
-					memcpy((void*)reply2.data(), letters.c_str(), letters.length());
+					memcpy((void*)reply2.data(), letters.data(), len);
 					socket.send(reply2);
 				break;
 				

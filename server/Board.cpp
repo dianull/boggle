@@ -1,4 +1,5 @@
 ﻿#include "Board.h"
+#include <map>
 
 using namespace std;
 
@@ -10,9 +11,9 @@ Board::~Board() {
 
 }
 
-string Board::getCurrentBoard() {
+Board::indexes_t Board::getCurrentBoard() {
 
-	return _currentBoardLetters;
+	return _currentBoardLettersIds;
 }
 
 
@@ -35,11 +36,21 @@ void Board::fillBoard() {
 
 	std::vector<Dice*> dices = createDices();
 
-	_currentBoardLetters = "";
+	_currentBoardLettersIds.clear();
+
+	boost::locale::generator gen;
+	map<string, int> dicesIds;
+	for (int i(0); i < 16; ++i) {
+		string s = _lettersSet[i];
+
+		boost::locale::boundary::ssegment_index map(boost::locale::boundary::character, s.begin(), s.end(), gen("en_US.UTF-8")); 
+		boost::locale::boundary::ssegment_index::iterator it = map.begin();
+		string c = *it;
+		dicesIds[c] = i;
+	}
 
 	srand(time(NULL));
 	
-	boost::locale::generator gen;
 //	std::locale loc = gen("");
 
 	for (int p(0); p < 4; ++p) {
@@ -59,6 +70,7 @@ void Board::fillBoard() {
 			boost::locale::boundary::ssegment_index map(boost::locale::boundary::character, str.begin(), str.end(), gen("en_US.UTF-8")); 
 			boost::locale::boundary::ssegment_index::iterator it = map.begin();
 			int i = 0;
+			int diceId = dicesIds[*it];
 			while (i++ < rand_wall)
 				it++;
 
@@ -68,9 +80,14 @@ void Board::fillBoard() {
 			l.letter = *it;
 			l.visited = false;
 			_board[p][q] = l;
-		//	fprintf(stderr, "%s", l.letter.c_str());
-		//	fflush(stderr);
-			_currentBoardLetters += l.letter;
+			
+			int letterId = rand_wall;
+
+			fprintf(stderr, "%s %d %d\n", l.letter.c_str(), diceId, letterId);
+			fflush(stderr);
+			_currentBoardLettersIds.push_back(diceId);
+			_currentBoardLettersIds.push_back(letterId);
+			
 			if (counter > 0)
 				dices.erase(dices.begin() + (rand_cube));
 

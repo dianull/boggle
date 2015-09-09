@@ -1,9 +1,11 @@
 #include <clocale>
 #include <locale>
 #include <locale.h>
-#include <curses.h>
+#include <ncursesw/curses.h>
 #include <cdk/cdk.h>
 #include "Client.h"
+
+using namespace std;
 
 WINDOW* mainWindow;
 int _scrolllistsize;
@@ -12,6 +14,27 @@ CDKSCROLL* _cdkscrollLeft;
 CDKSCROLL* _cdkscrollRight;
 CDKSCREEN* _cdkscreen;
 char** _itemlist; 
+
+
+
+static const wchar_t* _wlettersSet[16] = {
+	L"RWIIBN",
+	L"KNOEDR",
+	L"YZOEAZ",
+	L"OTWCS\u0104",
+	L"DAY\u0118AE",
+	L"BZPE\u00D3E",
+	L"AKIYAM",
+	L"M\u015AG\u0141CT",
+	L"IRPO\u0106K",
+	L"EUYAIO",
+	L"NIAPNC",
+	L"J\u0143FLHC",
+	L"GRSOAL",
+	L"UMJT\u0179Z",
+	L"\u017BWEILS",
+	L"N\u0143DZWH"
+};
 
 void drawScrollList(WINDOW*& listWindow, int frameY, int frameX) {
 	_itemlist = new char*[80];
@@ -39,26 +62,27 @@ void drawScrollList(WINDOW*& listWindow, int frameY, int frameX) {
 
 }
 
-void drawBoard(WINDOW* w, int frameX, int frameY) {
+void drawBoard(WINDOW*& w, int frameX, int frameY) {
 //	wbkgd(w, COLOR_PAIR(2));
 	
-	mvwhline(w, 0 , 1, '_', frameX / 1);
-	mvwhline(w, 3 , 1, '_', frameX );
-	mvwhline(w, 6, 1, '_', frameX );
-	mvwhline(w, 9, 1, '_', frameX );
-	mvwhline(w, 12, 1, '_', frameX);
+	mvwhline(w, 3 , 1, 0, frameX);
+	mvwhline(w, 6, 1, 0, frameX);
+	mvwhline(w, 9, 1, 0, frameX);
 
-	mvwvline(w, 1, 0, '|', frameY * 1.8);
-	mvwvline(w, 1, 6, '|', frameY * 1.8);
-	mvwvline(w, 1, 12, '|', frameY * 1.8);
-	mvwvline(w, 1, 18, '|', frameY * 1.8);
-	mvwvline(w, 1, 24, '|', frameY * 1.8);
+	mvwvline(w, 1, 6, 0, frameY * 1.8);
+	mvwvline(w, 1, 12, 0, frameY * 1.8);
+	mvwvline(w, 1, 18, 0, frameY * 1.8);
 
-//	wborder(w, '|', '|', '_', '_', '.', '.', '|', '|');
+	wborder(w, 0, 0, 0, 0, 0, 0, 0, 0);
 }
 
 int main(int, char**) {
 
+	Client client("tcp://localhost:5555");
+	client.sayHello();
+	vector<int> letters = client._currentBoardLetters;
+
+	
 	setlocale(LC_ALL, "");
 	initscr();
 	clear();
@@ -73,26 +97,35 @@ int main(int, char**) {
 
 	//init_color(COLOR_BLUE, 123, 196, 225);
  	mainWindow = newwin(frameHeight, frameWidth, frameY, frameX);
-	box(mainWindow, '|', '_');
-//	wborder(mainWindow, 0, 0, 0, 0, 0, 0, 0, 0);
+	wborder(mainWindow, 0, 0, 0, 0, 0, 0, 0, 0);
 
- 	WINDOW* boardWindow = newwin(14, 25, frameY + 2, frameX + 3);
-//	wborder(boardWindow, 0, 0, 0, 0, 0, 0, 0, 0);
+ 	WINDOW* boardWindow = newwin(13, 25, frameY + 2, frameX + 3);
 	drawBoard(boardWindow, frameX, frameY);
+
+	//fill board with letters
+	int id(0);
+
+	for (int i(2); i < 12; i += 3) {
+		for (int j(3); j < 22; j += 6) {
+				int diceId = letters[id];
+				int letterId = letters[id + 1];
+				wchar_t tmp = _wlettersSet[diceId][letterId]; 
+				mvwaddwstr(boardWindow, i, j, &tmp);
+				id += 2;
+		}
+	}
+	//----
 
 	wrefresh(mainWindow);	
 	wrefresh(boardWindow);	
-
 
 	WINDOW* listWindow;
 	drawScrollList(listWindow, frameY, frameX);
 
 	WINDOW* inputWindow = newwin(8, 30, frameY + 27, frameX + 3);
-	//wborder(inputWindow, 0, 0, 0, 0, 0, 0, 0, 0);
  	mvwprintw(inputWindow, 1, 1, "%s", "What words do you see?");
 	wrefresh(inputWindow);
 		
-//	read_dictionary();
 
 	start_color();
 	init_pair(1, COLOR_GREEN, COLOR_BLACK);
@@ -103,13 +136,6 @@ int main(int, char**) {
 	memset(input, 0, 255);
 	memset(final_input, 0, 255);
 
-//	echo();
-
-
-
-//	Client client("tcp://localhost:5555");
-
-//	client.sayHello();
 
 	endwin();
 	return 0;
