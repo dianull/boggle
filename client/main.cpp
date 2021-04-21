@@ -1,11 +1,15 @@
 #include <clocale>
 #include <locale>
 #include <locale.h>
+#include <boost/iostreams/categories.hpp> 
+#include <boost/iostreams/code_converter.hpp>
+#include <boost/locale.hpp>
 #include <ncursesw/curses.h>
 #include <cdk/cdk.h>
 #include "Client.h"
 
 using namespace std;
+using namespace boost::locale;
 
 WINDOW* mainWindow;
 int _scrolllistsize;
@@ -78,7 +82,7 @@ void drawBoard(WINDOW*& w, int frameX, int frameY) {
 
 int main(int, char**) {
 
-	Client client("tcp://localhost:5555");
+  Client client("tcp://localhost:5555");
 	client.sayHello();
 	vector<int> letters = client._currentBoardLetters;
 
@@ -136,6 +140,48 @@ int main(int, char**) {
 	memset(input, 0, 255);
 	memset(final_input, 0, 255);
 
+	generator gen;
+	std::locale loc = gen("");
+
+	echo();
+	while (true) {
+		wmove(inputWindow, 3, 1);
+	  wclrtoeol(inputWindow);
+		wgetstr(inputWindow, input);
+	  wclrtobot(inputWindow);
+			
+		wclrtoeol(inputWindow);
+	
+
+		strcat(final_input, input);
+		string s = string(input);
+	
+		s = fold_case(normalize(s, norm_default, loc), loc);
+
+ //  wattron(inputWindow, COLOR_PAIR(1));
+ //  wattroff(inputWindow, COLOR_PAIR(1));
+
+	string searchWord = string(input); 
+
+	if (strlen(input) >= 3 /*&& isOnBoard() && is_from_dictionary(input)*/) {
+
+		++_scrolllistsize;
+//		calculate_score(input, &_score);
+
+
+		insertCDKScrollItem(_cdkscrollLeft, final_input);
+//		_inputedwords.push_back(s);
+		mvwprintw(listWindow, 30, 10, "%d", _score);
+		mvwprintw(inputWindow, 5, 1, "%s", searchWord.c_str());
+		wrefresh(listWindow);
+		setCDKScrollCurrentTop(_cdkscrollLeft, 0);
+		drawCDKScroll(_cdkscrollLeft, true);
+		
+		} else {
+			mvwprintw(inputWindow, 5, 1, "%s", "zle");
+		}
+				
+	}
 
 	endwin();
 	return 0;
